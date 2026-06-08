@@ -48,7 +48,7 @@ public class S3Service {
         );
 
         // Elimina archivo temporal del EFS
-        Files.deleteIfExists(archivoTemporal);
+        //Files.deleteIfExists(archivoTemporal);
 
         return s3Key;
     }
