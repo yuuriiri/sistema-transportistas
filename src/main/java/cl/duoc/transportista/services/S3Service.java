@@ -101,7 +101,7 @@ public class S3Service {
         );
 
         // Eliminar temporal del EFS
-        Files.deleteIfExists(archivoTemporal);
+        // Files.deleteIfExists(archivoTemporal);
 
         return s3Key;
     }
