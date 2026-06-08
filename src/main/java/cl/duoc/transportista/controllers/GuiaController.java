@@ -2,6 +2,7 @@ package cl.duoc.transportista.controllers;
 
 import java.util.List;
 
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import cl.duoc.transportista.dto.GuiaRequestDTO;
 import cl.duoc.transportista.dto.GuiaResponseDTO;
@@ -63,5 +65,21 @@ public class GuiaController {
             @RequestParam String transportista,
             @RequestParam String fecha) {
         return ResponseEntity.ok(guiaService.buscarPorTransportistaYFecha(transportista, fecha));
+    }
+
+    @PostMapping("/{id}/subir")
+    public ResponseEntity<GuiaResponseDTO> subirGuia(
+            @PathVariable Long id,
+            @RequestParam("archivo") MultipartFile archivo) {
+        return ResponseEntity.ok(guiaService.subirGuiaAS3(id, archivo));
+    }
+
+    @GetMapping("/{id}/descargar")
+    public ResponseEntity<byte[]> descargarGuia(@PathVariable Long id) {
+        byte[] archivo = guiaService.descargarGuiaDesdS3(id);
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=guia-" + id + ".pdf")
+                .header("Content-Type", "application/pdf")
+                .body(archivo);
     }
 }

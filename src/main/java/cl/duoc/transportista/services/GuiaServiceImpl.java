@@ -1,9 +1,11 @@
 package cl.duoc.transportista.services;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.stereotype.Service;
 
 import cl.duoc.transportista.dto.GuiaRequestDTO;
@@ -20,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class GuiaServiceImpl implements GuiaService {
     
     private final GuiaRepository guiaRepository;
+    private final S3Service s3Service;
 
     //Convierte la entidad en un DTO de respuesta
     private GuiaResponseDTO toDTO(Guia guia) {
@@ -87,6 +90,34 @@ public class GuiaServiceImpl implements GuiaService {
                 .stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public GuiaResponseDTO subirGuiaAS3(Long id, MultipartFile archivo) {
+        Guia guia = guiaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Guía no encontrada con id: " + id));
+
+        try {
+            String s3Key = s3Service.subirGuia(archivo, guia.getFechaDespacho(), guia.getTransportista());
+            guia.setRutaS3(s3Key);
+            guia.setEstado("SUBIDA");
+            guia.setActualizadoEn(LocalDateTime.now());
+            return toDTO(guiaRepository.save(guia));
+        } catch (IOException e) {
+            throw new RuntimeException("Error al subir guía: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public byte[] descargarGuiaDesdS3(Long id) {
+        Guia guia = guiaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Guía no encontrada con id: " + id));
+
+        if (guia.getRutaS3() == null || guia.getRutaS3().isEmpty()) {
+            throw new RuntimeException("La guía no tiene archivo en S3");
+        }
+
+        return s3Service.descargarGuia(guia.getRutaS3());
     }
 
 }

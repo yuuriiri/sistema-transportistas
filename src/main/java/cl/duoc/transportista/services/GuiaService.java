@@ -4,6 +4,7 @@ import java.util.List;
 
 import cl.duoc.transportista.dto.GuiaRequestDTO;
 import cl.duoc.transportista.dto.GuiaResponseDTO;
+import org.springframework.web.multipart.MultipartFile;
 
 /*
  * Servicio para la entidad Guia.
@@ -22,4 +23,8 @@ public interface GuiaService {
     void eliminarGuia(Long id);
 
     List<GuiaResponseDTO> buscarPorTransportistaYFecha(String transportista, String fecha);
+
+    GuiaResponseDTO subirGuiaAS3(Long id, MultipartFile archivo);
+
+    byte[] descargarGuiaDesdS3(Long id);
 }
