@@ -77,4 +77,32 @@ public class S3Service {
                         .build()
         );
     }
+
+    public String subirGuiaBytes(byte[] contenido, String fecha, String transportista, String nombreArchivo) throws IOException {
+        // Guardar temporalmente en EFS
+        String efsPath = "/mnt/efs/" + fecha + "/" + transportista;
+        File directorio = new File(efsPath);
+        if (!directorio.exists()) {
+            directorio.mkdirs();
+        }
+
+        Path archivoTemporal = Paths.get(efsPath, nombreArchivo);
+        Files.write(archivoTemporal, contenido);
+
+        // Subir a S3
+        String s3Key = fecha + "/" + transportista + "/" + nombreArchivo;
+
+        s3Client.putObject(
+                PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(s3Key)
+                        .build(),
+                RequestBody.fromBytes(contenido)
+        );
+
+        // Eliminar temporal del EFS
+        Files.deleteIfExists(archivoTemporal);
+
+        return s3Key;
+    }
 }

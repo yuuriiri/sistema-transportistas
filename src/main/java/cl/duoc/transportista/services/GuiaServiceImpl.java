@@ -23,6 +23,7 @@ public class GuiaServiceImpl implements GuiaService {
     
     private final GuiaRepository guiaRepository;
     private final S3Service s3Service;
+    private final PdfService pdfService;
 
     //Convierte la entidad en un DTO de respuesta
     private GuiaResponseDTO toDTO(Guia guia) {
@@ -98,7 +99,11 @@ public class GuiaServiceImpl implements GuiaService {
                 .orElseThrow(() -> new RuntimeException("Guía no encontrada con id: " + id));
 
         try {
-            String s3Key = s3Service.subirGuia(archivo, guia.getFechaDespacho(), guia.getTransportista());
+            // Generar PDF automáticamente
+            byte[] pdfBytes = pdfService.generarPdf(guia);
+            String nombreArchivo = "guia-" + guia.getNumeroGuia() + ".pdf";
+
+            String s3Key = s3Service.subirGuiaBytes(pdfBytes, guia.getFechaDespacho(), guia.getTransportista(), nombreArchivo);
             guia.setRutaS3(s3Key);
             guia.setEstado("SUBIDA");
             guia.setActualizadoEn(LocalDateTime.now());
