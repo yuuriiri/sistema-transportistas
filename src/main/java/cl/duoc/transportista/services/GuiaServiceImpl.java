@@ -80,8 +80,13 @@ public class GuiaServiceImpl implements GuiaService {
 
     @Override
     public void eliminarGuia(Long id) {
-        guiaRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Guía no encontrada con ID: " + id));
+        Guia guia = guiaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Guía no encontrada con id: " + id));
+
+        if (guia.getRutaS3() != null) {
+            s3Service.eliminarGuia(guia.getRutaS3());
+        }
+
         guiaRepository.deleteById(id);
     }
 
