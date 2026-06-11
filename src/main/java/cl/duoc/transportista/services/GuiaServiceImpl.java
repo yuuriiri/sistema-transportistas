@@ -130,4 +130,63 @@ public class GuiaServiceImpl implements GuiaService {
         return s3Service.descargarGuia(guia.getRutaS3());
     }
 
+    @Override
+    public List<String> listarArchivosS3() {
+        return s3Service.listarArchivosS3();
+    }
+
+    @Override
+    public List<String> listarArchivosEFS() {
+        return s3Service.listarArchivosEFS();
+    }
+
+    @Override
+    public GuiaResponseDTO moverGuia(Long id, String nuevoTransportista, String nuevaFecha) {
+        Guia guia = guiaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Guía no encontrada con id: " + id));
+
+        if (guia.getRutaS3() == null) {
+            throw new RuntimeException("La guía no tiene archivo en S3 para mover");
+        }
+
+        String nombreArchivo = "guia-" + guia.getNumeroGuia() + ".pdf";
+        String nuevaRuta = s3Service.moverArchivo(guia.getRutaS3(), nuevaFecha, nuevoTransportista, nombreArchivo);
+
+        guia.setTransportista(nuevoTransportista);
+        guia.setFechaDespacho(nuevaFecha);
+        guia.setRutaS3(nuevaRuta);
+        guia.setActualizadoEn(LocalDateTime.now());
+
+        return toDTO(guiaRepository.save(guia));
+    }
+
+    @Override
+    public GuiaResponseDTO regenerarGuia(Long id, GuiaRequestDTO request) {
+        Guia guia = guiaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Guía no encontrada con id: " + id));
+
+        // Eliminar PDF anterior de S3 si existe
+        if (guia.getRutaS3() != null) {
+            s3Service.eliminarGuia(guia.getRutaS3());
+        }
+
+        // Actualizar datos
+        guia.setNumeroGuia(request.getNumeroGuia());
+        guia.setTransportista(request.getTransportista());
+        guia.setFechaDespacho(request.getFechaDespacho());
+        guia.setActualizadoEn(LocalDateTime.now());
+
+        // Regenerar PDF y subir a S3
+        try {
+            byte[] pdfBytes = pdfService.generarPdf(guia);
+            String nombreArchivo = "guia-" + guia.getNumeroGuia() + ".pdf";
+            String s3Key = s3Service.subirGuiaBytes(pdfBytes, guia.getFechaDespacho(), guia.getTransportista(), nombreArchivo);
+            guia.setRutaS3(s3Key);
+            guia.setEstado("SUBIDA");
+        } catch (IOException e) {
+            throw new RuntimeException("Error al regenerar guía: " + e.getMessage());
+        }
+
+        return toDTO(guiaRepository.save(guia));
+    }
 }

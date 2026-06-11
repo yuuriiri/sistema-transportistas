@@ -79,4 +79,29 @@ public class GuiaController {
                 .header("Content-Type", "application/pdf")
                 .body(archivo);
     }
+
+    @GetMapping("/archivos/s3")
+    public ResponseEntity<List<String>> listarArchivosS3() {
+        return ResponseEntity.ok(guiaService.listarArchivosS3());
+    }
+
+    @GetMapping("/archivos/efs")
+    public ResponseEntity<List<String>> listarArchivosEFS() {
+        return ResponseEntity.ok(guiaService.listarArchivosEFS());
+    }
+
+    @PutMapping("/{id}/mover")
+    public ResponseEntity<GuiaResponseDTO> moverGuia(
+            @PathVariable Long id,
+            @RequestParam String nuevoTransportista,
+            @RequestParam String nuevaFecha) {
+        return ResponseEntity.ok(guiaService.moverGuia(id, nuevoTransportista, nuevaFecha));
+    }
+
+    @PutMapping("/{id}/regenerar")
+    public ResponseEntity<GuiaResponseDTO> regenerarGuia(
+            @PathVariable Long id,
+            @RequestBody GuiaRequestDTO request) {
+        return ResponseEntity.ok(guiaService.regenerarGuia(id, request));
+    }
 }

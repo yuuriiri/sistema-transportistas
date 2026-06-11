@@ -14,6 +14,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -104,5 +107,63 @@ public class S3Service {
         // Files.deleteIfExists(archivoTemporal);
 
         return s3Key;
+    }
+
+    // Listar todos los archivos en S3
+    public List<String> listarArchivosS3() {
+        ListObjectsV2Request request = ListObjectsV2Request.builder()
+                .bucket(bucketName)
+                .build();
+
+        ListObjectsV2Response response = s3Client.listObjectsV2(request);
+
+        return response.contents().stream()
+                .map(S3Object::key)
+                .collect(Collectors.toList());
+    }
+
+    // Listar archivos en EFS
+    public List<String> listarArchivosEFS() {
+        List<String> archivos = new ArrayList<>();
+        File efs = new File("/mnt/efs");
+        listarRecursivo(efs, "", archivos);
+        return archivos;
+    }
+
+    private void listarRecursivo(File directorio, String prefijo, List<String> archivos) {
+        if (directorio.exists() && directorio.isDirectory()) {
+            File[] contenido = directorio.listFiles();
+            if (contenido != null) {
+                for (File archivo : contenido) {
+                    String ruta = prefijo.isEmpty() ? archivo.getName() : prefijo + "/" + archivo.getName();
+                    if (archivo.isDirectory()) {
+                        listarRecursivo(archivo, ruta, archivos);
+                    } else {
+                        archivos.add(ruta);
+                    }
+                }
+            }
+        }
+    }
+
+    // Mover archivo en S3 
+    public String moverArchivo(String origenKey, String nuevaFecha, String nuevoTransportista, String nombreArchivo) {
+        String nuevaKey = nuevaFecha + "/" + nuevoTransportista + "/" + nombreArchivo;
+
+        // Copiar a nueva ubicación
+        s3Client.copyObject(CopyObjectRequest.builder()
+                .sourceBucket(bucketName)
+                .sourceKey(origenKey)
+                .destinationBucket(bucketName)
+                .destinationKey(nuevaKey)
+                .build());
+
+        // Eliminar original
+        s3Client.deleteObject(DeleteObjectRequest.builder()
+                .bucket(bucketName)
+                .key(origenKey)
+                .build());
+
+        return nuevaKey;
     }
 }

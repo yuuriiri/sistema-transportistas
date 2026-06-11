@@ -27,4 +27,12 @@ public interface GuiaService {
     GuiaResponseDTO subirGuiaAS3(Long id, MultipartFile archivo);
 
     byte[] descargarGuiaDesdS3(Long id);
+
+    List<String> listarArchivosS3();
+
+    List<String> listarArchivosEFS();
+
+    GuiaResponseDTO moverGuia(Long id, String nuevoTransportista, String nuevaFecha);
+
+    GuiaResponseDTO regenerarGuia(Long id, GuiaRequestDTO request);
 }
