@@ -53,4 +53,7 @@ jobs:
               -e AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }} \
               -e AWS_REGION=${{ secrets.AWS_REGION }} \
               -e AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }} \
+              -e IDAAS_JWKS_URI=${{ secrets.IDAAS_JWKS_URI }} \
+              -e IDAAS_AUDIENCE=${{ secrets.IDAAS_AUDIENCE }} \
+              -e IDAAS_ISSUER=${{ secrets.IDAAS_ISSUER }} \
               ${{ secrets.DOCKER_USERNAME }}/transportista:latest
