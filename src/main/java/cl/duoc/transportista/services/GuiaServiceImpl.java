@@ -201,4 +201,13 @@ public class GuiaServiceImpl implements GuiaService {
 
         return toDTO(guiaRepository.save(guia));
     }
+
+    // NUEVO S8: Simula un error y envia la guia a la Cola de Errores (DLQ)
+    @Override
+    public void simularError(Long id) {
+        Guia guia = guiaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Guía no encontrada con id: " + id));
+
+        messageProducer.simularError(guia, "Error simulado: fallo en el procesamiento de la guia " + guia.getNumeroGuia());
+    }
 }

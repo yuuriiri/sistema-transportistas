@@ -28,14 +28,7 @@ public class GuiaMessageProducer {
      * Si falla, redirige a la cola de errores.
      */
     public void enviarGuia(Guia guia) {
-        GuiaMessageDTO mensaje = GuiaMessageDTO.builder()
-                .guiaId(guia.getId())
-                .numeroGuia(guia.getNumeroGuia())
-                .transportista(guia.getTransportista())
-                .fechaDespacho(guia.getFechaDespacho())
-                .estado(guia.getEstado())
-                .creadoEn(guia.getCreadoEn())
-                .build();
+        GuiaMessageDTO mensaje = buildMensaje(guia);
 
         try {
             rabbitTemplate.convertAndSend(
@@ -49,6 +42,29 @@ public class GuiaMessageProducer {
             log.error(">>> Error al enviar a Cola de Exito: {}. Redirigiendo a Cola de Errores.", e.getMessage());
             enviarAColaErrores(mensaje, e.getMessage());
         }
+    }
+
+    /**
+     * Simula un error: envia la guia directamente a la Cola de Errores (DLQ).
+     * Se usa para demostrar el funcionamiento de la cola de errores.
+     */
+    public void simularError(Guia guia, String motivoError) {
+        GuiaMessageDTO mensaje = buildMensaje(guia);
+        enviarAColaErrores(mensaje, motivoError);
+    }
+
+    /**
+     * Construye el DTO del mensaje a partir de la entidad Guia.
+     */
+    private GuiaMessageDTO buildMensaje(Guia guia) {
+        return GuiaMessageDTO.builder()
+                .guiaId(guia.getId())
+                .numeroGuia(guia.getNumeroGuia())
+                .transportista(guia.getTransportista())
+                .fechaDespacho(guia.getFechaDespacho())
+                .estado(guia.getEstado())
+                .creadoEn(guia.getCreadoEn())
+                .build();
     }
 
     /**

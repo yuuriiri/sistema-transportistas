@@ -2,7 +2,6 @@ package cl.duoc.transportista.controllers;
 
 import java.util.List;
 
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,14 +20,14 @@ import cl.duoc.transportista.services.GuiaService;
 import lombok.RequiredArgsConstructor;
 
 /*
-    * Controlador para la entidad Guia.
-    * Contiene endpoints para realizar operaciones CRUD y consultas personalizadas.
-*/
+ * Controlador para la entidad Guia.
+ * Contiene endpoints para realizar operaciones CRUD y consultas personalizadas.
+ */
 @RestController
 @RequestMapping("/api/guias")
 @RequiredArgsConstructor
 public class GuiaController {
-    
+
     private final GuiaService guiaService;
 
     @PostMapping
@@ -103,5 +102,12 @@ public class GuiaController {
             @PathVariable Long id,
             @RequestBody GuiaRequestDTO request) {
         return ResponseEntity.ok(guiaService.regenerarGuia(id, request));
+    }
+
+    // Endpoint para simular un error y enviar a la DLQ
+    @PostMapping("/{id}/simular-error")
+    public ResponseEntity<String> simularError(@PathVariable Long id) {
+        guiaService.simularError(id);
+        return ResponseEntity.ok("Guia " + id + " enviada a la Cola de Errores (DLQ)");
     }
 }

@@ -8,31 +8,23 @@ import org.springframework.web.multipart.MultipartFile;
 
 /*
  * Servicio para la entidad Guia.
- * Contiene métodos para realizar operaciones CRUD y consultas personalizadas. 
+ * Contiene métodos para realizar operaciones CRUD y consultas personalizadas.
  */
 public interface GuiaService {
-    
-    GuiaResponseDTO crearGuia(GuiaRequestDTO request); 
 
-    List<GuiaResponseDTO> obtenerTodas(); 
-
+    GuiaResponseDTO crearGuia(GuiaRequestDTO request);
+    List<GuiaResponseDTO> obtenerTodas();
     GuiaResponseDTO obtenerPorId(Long id);
-
     GuiaResponseDTO actualizarGuia(Long id, GuiaRequestDTO request);
-
     void eliminarGuia(Long id);
-
     List<GuiaResponseDTO> buscarPorTransportistaYFecha(String transportista, String fecha);
-
     GuiaResponseDTO subirGuiaAS3(Long id, MultipartFile archivo);
-
     byte[] descargarGuiaDesdS3(Long id);
-
     List<String> listarArchivosS3();
-
     List<String> listarArchivosEFS();
-
     GuiaResponseDTO moverGuia(Long id, String nuevoTransportista, String nuevaFecha);
-
     GuiaResponseDTO regenerarGuia(Long id, GuiaRequestDTO request);
+
+    // NUEVO S8: Simular error para enviar a la DLQ
+    void simularError(Long id);
 }
