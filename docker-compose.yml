@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+
+  # ============================================================
+  # RabbitMQ - Broker de mensajes (contenedor Docker)
+  # ============================================================
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"     # Puerto AMQP (comunicacion entre microservicios)
+      - "15672:15672"   # Puerto de la consola web de administracion
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ============================================================
+  # Microservicio 1: Transportista (PRODUCTOR) - puerto 8080
+  # ============================================================
+  transportista:
+    image: yuuriiri/transportista:latest
+    container_name: transportista
+    ports:
+      - "8080:8080"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - /home/ec2-user/Wallet:/opt/wallet
+      - /mnt/efs:/mnt/efs
+    environment:
+      # RabbitMQ - usa el nombre del servicio Docker como host
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+      # AWS
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      # Azure AD / IDaaS
+      IDAAS_JWKS_URI: ${IDAAS_JWKS_URI}
+      IDAAS_AUDIENCE: ${IDAAS_AUDIENCE}
+      IDAAS_ISSUER: ${IDAAS_ISSUER}
+
+  # ============================================================
+  # Microservicio 2: Consumidor de Guias (CONSUMIDOR) - puerto 8081
+  # ============================================================
+  consumidor:
+    image: yuuriiri/consumidor-guias:latest
+    container_name: consumidor-guias
+    ports:
+      - "8081:8081"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - /home/ec2-user/Wallet:/opt/wallet
+    environment:
+      # RabbitMQ
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+      # Azure AD / IDaaS (misma config)
+      IDAAS_JWKS_URI: ${IDAAS_JWKS_URI}
+      IDAAS_AUDIENCE: ${IDAAS_AUDIENCE}
+      IDAAS_ISSUER: ${IDAAS_ISSUER}

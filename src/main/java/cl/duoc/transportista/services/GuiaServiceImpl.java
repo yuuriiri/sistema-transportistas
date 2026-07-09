@@ -13,19 +13,24 @@ import cl.duoc.transportista.dto.GuiaResponseDTO;
 import cl.duoc.transportista.models.Guia;
 import cl.duoc.transportista.repositories.GuiaRepository;
 import lombok.RequiredArgsConstructor;
-/*
-    * Implementación del servicio para la entidad Guia.
-    * Contiene la lógica de negocio para realizar operaciones CRUD y consultas personalizadas.
-*/
-@Service 
+
+/**
+ * Implementacion del servicio para la entidad Guia.
+ * Contiene la logica de negocio para operaciones CRUD y consultas personalizadas.
+ *
+ * MODIFICADO S8: Despues de crear una guia, se envian los datos a RabbitMQ
+ * mediante el GuiaMessageProducer.
+ */
+@Service
 @RequiredArgsConstructor
 public class GuiaServiceImpl implements GuiaService {
-    
+
     private final GuiaRepository guiaRepository;
     private final S3Service s3Service;
     private final PdfService pdfService;
+    private final GuiaMessageProducer messageProducer; // NUEVO S8
 
-    //Convierte la entidad en un DTO de respuesta
+    // Convierte la entidad en un DTO de respuesta
     private GuiaResponseDTO toDTO(Guia guia) {
         return GuiaResponseDTO.builder()
                 .id(guia.getId())
@@ -42,12 +47,17 @@ public class GuiaServiceImpl implements GuiaService {
                 .numeroGuia(request.getNumeroGuia())
                 .transportista(request.getTransportista())
                 .fechaDespacho(request.getFechaDespacho())
-                .estado("CREADA") // Estado inicial de la guía
+                .estado("CREADA")
                 .creadoEn(LocalDateTime.now())
                 .actualizadoEn(LocalDateTime.now())
                 .build();
 
-                return toDTO(guiaRepository.save(guia));
+        Guia guiaGuardada = guiaRepository.save(guia);
+
+        // NUEVO S8: Enviar datos de la guia a la cola de RabbitMQ
+        messageProducer.enviarGuia(guiaGuardada);
+
+        return toDTO(guiaGuardada);
     }
 
     @Override
@@ -57,8 +67,8 @@ public class GuiaServiceImpl implements GuiaService {
                 .map(this::toDTO)
                 .toList();
     }
-    
-    @Override 
+
+    @Override
     public GuiaResponseDTO obtenerPorId(Long id) {
         Guia guia = guiaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Guía no encontrada con ID: " + id));
@@ -104,7 +114,6 @@ public class GuiaServiceImpl implements GuiaService {
                 .orElseThrow(() -> new RuntimeException("Guía no encontrada con id: " + id));
 
         try {
-            // Generar PDF automáticamente
             byte[] pdfBytes = pdfService.generarPdf(guia);
             String nombreArchivo = "guia-" + guia.getNumeroGuia() + ".pdf";
 
@@ -112,7 +121,13 @@ public class GuiaServiceImpl implements GuiaService {
             guia.setRutaS3(s3Key);
             guia.setEstado("SUBIDA");
             guia.setActualizadoEn(LocalDateTime.now());
-            return toDTO(guiaRepository.save(guia));
+
+            Guia guiaActualizada = guiaRepository.save(guia);
+
+            // NUEVO S8: Tambien enviar a la cola cuando se sube a S3
+            messageProducer.enviarGuia(guiaActualizada);
+
+            return toDTO(guiaActualizada);
         } catch (IOException e) {
             throw new RuntimeException("Error al subir guía: " + e.getMessage());
         }
@@ -165,18 +180,15 @@ public class GuiaServiceImpl implements GuiaService {
         Guia guia = guiaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Guía no encontrada con id: " + id));
 
-        // Eliminar PDF anterior de S3 si existe
         if (guia.getRutaS3() != null) {
             s3Service.eliminarGuia(guia.getRutaS3());
         }
 
-        // Actualizar datos
         guia.setNumeroGuia(request.getNumeroGuia());
         guia.setTransportista(request.getTransportista());
         guia.setFechaDespacho(request.getFechaDespacho());
         guia.setActualizadoEn(LocalDateTime.now());
 
-        // Regenerar PDF y subir a S3
         try {
             byte[] pdfBytes = pdfService.generarPdf(guia);
             String nombreArchivo = "guia-" + guia.getNumeroGuia() + ".pdf";
