@@ -4,6 +4,7 @@ import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
@@ -14,57 +15,58 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Configuracion de RabbitMQ para el microservicio Transportista (PRODUCTOR).
  *
- * Define 2 colas:
- *   - cola.guias.exito   : recibe las guias creadas exitosamente.
- *   - cola.guias.errores : recibe las guias que fallaron al enviarse a la cola 1.
- *
- * Ambas colas estan vinculadas a un Direct Exchange con routing keys distintas.
- * Se usa Jackson para serializar los mensajes como JSON.
+ * La cola principal esta vinculada a un Dead Letter Exchange (DLX).
+ * Cuando el consumidor rechaza un mensaje (NACK), RabbitMQ lo redirige
+ * automaticamente a la DLQ. El productor NO envia a la DLQ manualmente.
  */
 @Configuration
 public class RabbitMQConfig {
 
-    // Nombres de las colas
-    public static final String COLA_EXITO = "cola.guias.exito";
-    public static final String COLA_ERRORES = "cola.guias.errores";
-
-    // Exchange
+    // Cola principal
+    public static final String COLA_PRINCIPAL = "cola.guias.principal";
     public static final String EXCHANGE = "guias.exchange";
+    public static final String ROUTING_KEY = "guia.principal";
 
-    // Routing keys
-    public static final String ROUTING_KEY_EXITO = "guia.exito";
-    public static final String ROUTING_KEY_ERROR = "guia.error";
+    // Dead Letter Queue (DLQ)
+    public static final String DLQ = "cola.guias.dlq";
+    public static final String DLX_EXCHANGE = "guias.dlx.exchange";
+    public static final String DLX_ROUTING_KEY = "guia.dlq";
 
-    // ---------- Colas ----------
-
-    @Bean
-    public Queue colaExito() {
-        // durable = true para que la cola sobreviva reinicios de RabbitMQ
-        return new Queue(COLA_EXITO, true);
-    }
+    // ---------- Cola principal con argumentos DLX ----------
 
     @Bean
-    public Queue colaErrores() {
-        return new Queue(COLA_ERRORES, true);
+    public Queue colaPrincipal() {
+        return QueueBuilder.durable(COLA_PRINCIPAL)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", DLX_ROUTING_KEY)
+                .build();
     }
-
-    // ---------- Exchange ----------
 
     @Bean
     public DirectExchange exchange() {
         return new DirectExchange(EXCHANGE);
     }
 
-    // ---------- Bindings ----------
+    @Bean
+    public Binding bindingPrincipal(Queue colaPrincipal, DirectExchange exchange) {
+        return BindingBuilder.bind(colaPrincipal).to(exchange).with(ROUTING_KEY);
+    }
+
+    // ---------- DLQ y su exchange ----------
 
     @Bean
-    public Binding bindingExito(Queue colaExito, DirectExchange exchange) {
-        return BindingBuilder.bind(colaExito).to(exchange).with(ROUTING_KEY_EXITO);
+    public Queue colaDlq() {
+        return QueueBuilder.durable(DLQ).build();
     }
 
     @Bean
-    public Binding bindingErrores(Queue colaErrores, DirectExchange exchange) {
-        return BindingBuilder.bind(colaErrores).to(exchange).with(ROUTING_KEY_ERROR);
+    public DirectExchange dlxExchange() {
+        return new DirectExchange(DLX_EXCHANGE);
+    }
+
+    @Bean
+    public Binding bindingDlq(Queue colaDlq, DirectExchange dlxExchange) {
+        return BindingBuilder.bind(colaDlq).to(dlxExchange).with(DLX_ROUTING_KEY);
     }
 
     // ---------- Conversor JSON ----------

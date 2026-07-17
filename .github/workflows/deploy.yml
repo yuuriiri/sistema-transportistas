@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Build and Deploy - Transportista
 
 on:
   push:
@@ -19,7 +19,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ---- Build Microservicio 1: Transportista ----
       - name: Build Transportista con Maven
         run: mvn clean package -DskipTests
 
@@ -36,20 +35,6 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/transportista:latest
 
-      # ---- Build Microservicio 2: Consumidor ----
-      - name: Build Consumidor con Maven
-        run: |
-          cd consumidor-guias
-          mvn clean package -DskipTests
-
-      - name: Build y Push imagen Consumidor
-        uses: docker/build-push-action@v5
-        with:
-          context: ./consumidor-guias
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/consumidor-guias:latest
-
-      # ---- Deploy en EC2 con docker-compose ----
       - name: Deploy en EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -57,19 +42,15 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Detener contenedores anteriores
             docker stop transportista consumidor-guias rabbitmq || true
             docker rm transportista consumidor-guias rabbitmq || true
 
-            # Descargar imagenes actualizadas
             docker pull ${{ secrets.DOCKER_USERNAME }}/transportista:latest
             docker pull ${{ secrets.DOCKER_USERNAME }}/consumidor-guias:latest
             docker pull rabbitmq:3-management
 
-            # Crear red Docker para comunicacion entre contenedores
             docker network create guias-network || true
 
-            # 1. Levantar RabbitMQ
             docker run -d --name rabbitmq \
               --network guias-network \
               -p 5672:5672 -p 15672:15672 \
@@ -77,11 +58,9 @@ jobs:
               -e RABBITMQ_DEFAULT_PASS=guest \
               rabbitmq:3-management
 
-            # Esperar a que RabbitMQ este listo
             echo "Esperando a RabbitMQ..."
             sleep 20
 
-            # 2. Levantar Transportista (Productor)
             docker run -d --name transportista \
               --network guias-network \
               -p 8080:8080 \
@@ -101,7 +80,6 @@ jobs:
               -e IDAAS_ISSUER='${{ secrets.IDAAS_ISSUER }}' \
               ${{ secrets.DOCKER_USERNAME }}/transportista:latest
 
-            # 3. Levantar Consumidor
             docker run -d --name consumidor-guias \
               --network guias-network \
               -p 8081:8081 \

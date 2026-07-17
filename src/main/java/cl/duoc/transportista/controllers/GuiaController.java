@@ -19,10 +19,6 @@ import cl.duoc.transportista.dto.GuiaResponseDTO;
 import cl.duoc.transportista.services.GuiaService;
 import lombok.RequiredArgsConstructor;
 
-/*
- * Controlador para la entidad Guia.
- * Contiene endpoints para realizar operaciones CRUD y consultas personalizadas.
- */
 @RestController
 @RequestMapping("/api/guias")
 @RequiredArgsConstructor
@@ -102,12 +98,5 @@ public class GuiaController {
             @PathVariable Long id,
             @RequestBody GuiaRequestDTO request) {
         return ResponseEntity.ok(guiaService.regenerarGuia(id, request));
-    }
-
-    // Endpoint para simular un error y enviar a la DLQ
-    @PostMapping("/{id}/simular-error")
-    public ResponseEntity<String> simularError(@PathVariable Long id) {
-        guiaService.simularError(id);
-        return ResponseEntity.ok("Guia " + id + " enviada a la Cola de Errores (DLQ)");
     }
 }

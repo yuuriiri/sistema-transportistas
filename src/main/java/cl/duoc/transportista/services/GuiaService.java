@@ -6,10 +6,6 @@ import cl.duoc.transportista.dto.GuiaRequestDTO;
 import cl.duoc.transportista.dto.GuiaResponseDTO;
 import org.springframework.web.multipart.MultipartFile;
 
-/*
- * Servicio para la entidad Guia.
- * Contiene métodos para realizar operaciones CRUD y consultas personalizadas.
- */
 public interface GuiaService {
 
     GuiaResponseDTO crearGuia(GuiaRequestDTO request);
@@ -24,7 +20,4 @@ public interface GuiaService {
     List<String> listarArchivosEFS();
     GuiaResponseDTO moverGuia(Long id, String nuevoTransportista, String nuevaFecha);
     GuiaResponseDTO regenerarGuia(Long id, GuiaRequestDTO request);
-
-    // NUEVO S8: Simular error para enviar a la DLQ
-    void simularError(Long id);
 }
